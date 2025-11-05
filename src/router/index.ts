@@ -1,48 +1,63 @@
-/**
- * router/index.ts
- *
- * Automatic routes for `./src/pages/*.vue`
- */
-
-// Composables
 import { createRouter, createWebHistory } from 'vue-router'
-import { routes } from 'vue-router/auto-routes'
 
+// 🧩 Importa tus vistas (ajusta los nombres según tus archivos)
+import LoginView from '@/views/LoginView.vue'
+import HomeView from '@/views/HomeView.vue'
+import DashboardView from '@/views/DashboardView.vue'
+import NotFoundView from '@/views/NotFoundView.vue'
+
+// ============================================
+// 🔒 Definición de rutas
+// ============================================
+const routes = [
+  {
+    path: '/',
+    name: 'Home',
+    component: HomeView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: DashboardView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: LoginView
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFoundView
+  }
+]
+
+// ============================================
+// ⚙️ Creación del router
+// ============================================
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes,
+  routes
 })
 
-const isAuthenticated = (): boolean => {
-  return !!localStorage.getItem('token')
-}
-
+// ============================================
+// 🧩 Guardia de navegación (control de acceso)
+// ============================================
 router.beforeEach((to, from, next) => {
-  if (to.name != '/' && !isAuthenticated()) {
-    console.warn('Acceso denegado. Redirigiendo a login.')
-    next('/') 
-  } else {
-    next() 
-  }
-})
+  // Revisa si la ruta requiere autenticación
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
 
-// Workaround for https://github.com/vitejs/vite/issues/11804
-router.onError((err, to) => {
-  if (err?.message?.includes?.('Failed to fetch dynamically imported module')) {
-    if (localStorage.getItem('vuetify:dynamic-reload')) {
-      console.error('Dynamic import error, reloading page did not fix it', err)
-    } else {
-      console.log('Reloading page to fix dynamic import error')
-      localStorage.setItem('vuetify:dynamic-reload', 'true')
-      location.assign(to.fullPath)
-    }
-  } else {
-    console.error(err)
-  }
-})
+  // Verifica si hay sesión activa (token o user)
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
 
-router.isReady().then(() => {
-  localStorage.removeItem('vuetify:dynamic-reload')
+  if (requiresAuth && !token) {
+    console.warn('⚠️ Acceso denegado. Redirigiendo a login.')
+    next('/login')
+  } else {
+    next()
+  }
 })
 
 export default router
